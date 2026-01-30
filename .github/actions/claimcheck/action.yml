@@ -48,9 +48,13 @@ runs:
           fi
         fi
 
-    - name: Install ClaimCheck
+    - name: Build ClaimCheck
       shell: bash
-      run: npm install -g claimcheck
+      run: |
+        echo "Building ClaimCheck from source..."
+        npm ci
+        npm run build
+        echo "$(pwd)" >> $GITHUB_PATH
 
     - name: Analyze Commit Messages
       id: analyze
@@ -73,8 +77,11 @@ runs:
           exit 0
         fi
         
+        # Use locally built claimcheck
+        CLAIMCHECK="node ${{ github.action_path }}/../../../dist/cli/index.js"
+        
         # Detect claims in commit messages
-        echo "$commits" | claimcheck detect-claims --format json > claims.json || true
+        echo "$commits" | $CLAIMCHECK detect-claims --format json > claims.json || true
         
         claims_count=$(cat claims.json | jq 'length' 2>/dev/null || echo "0")
         echo "Detected $claims_count claim(s) in commit messages"
@@ -90,7 +97,7 @@ runs:
             echo "Claim: $claim_text"
             
             # Verify the claim
-            result=$(claimcheck verify "$claim_text" --cwd "${{ inputs.cwd }}" --code-only=${{ inputs.code-only }} --format json 2>/dev/null || echo '{"verified": true}')
+            result=$($CLAIMCHECK verify "$claim_text" --cwd "${{ inputs.cwd }}" --code-only=${{ inputs.code-only }} --format json 2>/dev/null || echo '{"verified": true}')
             verified=$(echo "$result" | jq -r '.verified')
             
             if [[ "$verified" != "true" ]]; then
