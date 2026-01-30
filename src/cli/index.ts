@@ -8,6 +8,7 @@ import { registerCheckCommitCommand } from './commands/check-commit.js';
 import { registerDetectClaimsCommand } from './commands/detect-claims.js';
 import { registerVerifyCommand } from './commands/verify.js';
 import { registerVerifyDiffCommand } from './commands/verify-diff.js';
+import { registerWatchCommand } from './commands/watch.js';
 
 const program = new Command();
 
@@ -21,6 +22,7 @@ registerVerifyCommand(program);
 registerVerifyDiffCommand(program);
 registerCheckCommitCommand(program);
 registerDetectClaimsCommand(program);
+registerWatchCommand(program);
 
 // Parse and run
 program.parse();

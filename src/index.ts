@@ -64,11 +64,27 @@ export {
   type GitDiffResult,
 } from './core/git/index.js';
 
+// Watcher - session monitoring
+export {
+  FileWatcher,
+  WatchSession,
+  createWatchSession,
+  parseSessionLine,
+  parseSessionLines,
+  extractAssistantMessages,
+  type FileWatcherConfig,
+  type SessionMessage,
+  type ParsedSessionLine,
+  type WatchSessionConfig,
+  type DetectedClaim,
+} from './core/watcher/index.js';
+
 // CLI utilities (for integration)
 export { runVerify } from './cli/commands/verify.js';
 export { runVerifyDiff } from './cli/commands/verify-diff.js';
 export { runCheckCommit } from './cli/commands/check-commit.js';
 export { runDetectClaims } from './cli/commands/detect-claims.js';
+export { runWatch } from './cli/commands/watch.js';
 export { formatResult } from './cli/ui/reporter.js';
 export { formatDiffResult } from './cli/ui/diff-reporter.js';
 

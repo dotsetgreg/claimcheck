@@ -123,6 +123,57 @@ claimcheck check-commit HEAD
 claimcheck check-commit abc1234
 ```
 
+### `watch` - Monitor Session Logs (Real-time)
+
+Watch Claude Code session logs (or any JSONL file) for claims and automatically verify them as they appear.
+
+```bash
+# Watch the latest Claude Code session
+claimcheck watch
+
+# Watch a specific session file
+claimcheck watch ~/.claude/projects/.../session.jsonl
+
+# Watch with git-aware verification
+claimcheck watch --git-aware
+
+# Detect claims only (don't verify)
+claimcheck watch --no-auto-verify
+
+# Watch a specific session by ID
+claimcheck watch --session abc123
+```
+
+**Options:**
+| Option | Description | Default |
+|--------|-------------|---------|
+| `-g, --git-aware` | Use git-aware verification (find missed files) | `false` |
+| `--code-only` | Only report matches in actual code | `true` |
+| `--no-auto-verify` | Only detect claims, don't verify them | verify enabled |
+| `-f, --format <format>` | Output format: `pretty`, `json`, `summary` | `pretty` |
+| `-s, --session <id>` | Watch a specific Claude Code session by ID | |
+| `--cwd <directory>` | Working directory for verification | current dir |
+
+**Example Output:**
+```
+ClaimCheck Watch Mode
+────────────────────────────────────────────────────────
+Watching: /Users/you/.claude/projects/.../session.jsonl
+Verify:   auto
+Mode:     basic search
+Filter:   code only
+────────────────────────────────────────────────────────
+Press Ctrl+C to stop
+
+Watching for claims...
+
+Claim detected: rename "UserService" -> "AuthService"
+INCOMPLETE: rename "UserService" -> "AuthService"
+
+   Claim: rename "UserService" → "AuthService"
+...
+```
+
 ## Example Output
 
 ### Basic Verification
@@ -302,6 +353,7 @@ import {
   generateVariants,
   detectContext,
   startClaimCheckServer, // MCP server
+  createWatchSession,    // Watch mode
 } from 'claimcheck';
 
 // Parse a single claim
@@ -330,6 +382,24 @@ console.log(variants.all); // ['UserService', 'userService', 'user_service', ...
 
 // Start MCP server programmatically
 const server = await startClaimCheckServer({ cwd: '/path/to/project' });
+
+// Watch a session log for claims
+const session = await createWatchSession({
+  filePath: '~/.claude/projects/.../session.jsonl',
+  cwd: process.cwd(),
+  autoVerify: true,
+});
+
+session.on('claim', (detected) => {
+  console.log('Claim detected:', detected.claim);
+});
+
+session.on('verified', (detected) => {
+  console.log('Verified:', detected.verified);
+});
+
+// Stop watching when done
+session.stop();
 ```
 
 ## License

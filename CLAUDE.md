@@ -39,6 +39,7 @@ pnpm exec claimcheck verify "claim"           # Basic verification
 pnpm exec claimcheck verify-diff "claim"      # Git-aware verification
 pnpm exec claimcheck detect-claims "text"     # Extract claims from text
 pnpm exec claimcheck check-commit HEAD        # Verify commit message claims
+pnpm exec claimcheck watch                    # Watch session logs (real-time)
 
 # MCP server
 pnpm exec claimcheck-mcp                      # Start MCP server
@@ -117,7 +118,8 @@ src/
 │   │   ├── verify.ts         # Basic verification command
 │   │   ├── verify-diff.ts    # Git-aware verification command
 │   │   ├── detect-claims.ts  # Claim extraction command
-│   │   └── check-commit.ts   # Verify from commit message
+│   │   ├── check-commit.ts   # Verify from commit message
+│   │   └── watch.ts          # Watch session logs command
 │   └── ui/
 │       ├── reporter.ts       # Verification output formatting
 │       ├── diff-reporter.ts  # Diff verification output formatting
@@ -136,6 +138,10 @@ src/
 │   │   ├── result-analyzer.ts # Basic verification analysis
 │   │   ├── diff-analyzer.ts   # Git-aware verification
 │   │   └── context-detector.ts # Code vs comment detection
+│   ├── watcher/
+│   │   ├── file-watcher.ts   # File change monitoring
+│   │   ├── session-parser.ts # JSONL session log parsing
+│   │   └── watch-session.ts  # Claim detection and verification
 │   └── git/
 │       └── git-utils.ts      # Git diff utilities
 ├── types/
@@ -172,6 +178,14 @@ The `verify-diff` command compares claims against actual git changes:
 - Gets list of modified files from git
 - Searches for references in all files
 - Identifies "missed files" - files with references that weren't modified
+
+### Watch Mode
+The `watch` command monitors session logs for real-time claim verification:
+- Watches Claude Code session logs (`~/.claude/projects/.../*.jsonl`)
+- Parses JSONL format for assistant messages
+- Automatically detects claims in AI responses
+- Verifies claims as they appear
+- Useful for continuous monitoring during AI coding sessions
 
 ## External Dependencies
 
