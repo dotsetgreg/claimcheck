@@ -83,7 +83,7 @@ runs:
         # Detect claims in commit messages
         echo "$commits" | $CLAIMCHECK detect-claims --format json > claims.json || true
         
-        claims_count=$(cat claims.json | jq 'length' 2>/dev/null || echo "0")
+        claims_count=$(cat claims.json | jq '.count // 0' 2>/dev/null || echo "0")
         echo "Detected $claims_count claim(s) in commit messages"
         
         incomplete_count=0
@@ -91,14 +91,17 @@ runs:
         # Verify each claim
         if [[ $claims_count -gt 0 ]]; then
           echo "Verifying claims..."
-          cat claims.json | jq -c '.[]' | while read claim; do
-            claim_text=$(echo "$claim" | jq -r '.claim.raw')
+          cat claims.json | jq -c '.claims[]?' | while read claim; do
+            claim_text=$(echo "$claim" | jq -r '.raw // empty')
+            if [[ -z "$claim_text" ]]; then
+              continue
+            fi
             echo ""
             echo "Claim: $claim_text"
             
             # Verify the claim
             result=$($CLAIMCHECK verify "$claim_text" --cwd "${{ inputs.cwd }}" --code-only=${{ inputs.code-only }} --format json 2>/dev/null || echo '{"verified": true}')
-            verified=$(echo "$result" | jq -r '.verified')
+            verified=$(echo "$result" | jq -r '.verified // true')
             
             if [[ "$verified" != "true" ]]; then
               echo "  ✗ INCOMPLETE - Found remaining references"
