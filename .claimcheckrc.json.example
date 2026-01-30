@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/claimcheck/dist/config-schema.json",
+  "search": {
+    "caseSensitive": false,
+    "contextLines": 2,
+    "codeOnly": false,
+    "excludePatterns": ["*.test.ts", "*.spec.ts", "node_modules/**"]
+  },
+  "exclude": [
+    "**/*.min.js",
+    "**/dist/**",
+    "**/build/**"
+  ],
+  "watch": {
+    "gitAware": true,
+    "autoVerify": true,
+    "format": "pretty"
+  }
+}

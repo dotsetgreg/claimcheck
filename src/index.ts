@@ -24,6 +24,14 @@ export type {
 
 export { EXIT_CODES } from './types/index.js';
 
+// Config
+export {
+  loadConfig,
+  mergeWithConfig,
+  getExcludedPatterns,
+  type ClaimCheckConfig,
+} from './core/config/index.js';
+
 // Parser
 export { parseClaim, parseMultipleClaims, type ParseResult } from './core/parser/index.js';
 export { generateVariants, type GeneratedVariants } from './core/parser/index.js';
@@ -84,6 +92,7 @@ export { runVerify } from './cli/commands/verify.js';
 export { runVerifyDiff } from './cli/commands/verify-diff.js';
 export { runCheckCommit } from './cli/commands/check-commit.js';
 export { runDetectClaims } from './cli/commands/detect-claims.js';
+export { runBatchVerify } from './cli/commands/batch-verify.js';
 export { runWatch } from './cli/commands/watch.js';
 export { formatResult } from './cli/ui/reporter.js';
 export { formatDiffResult } from './cli/ui/diff-reporter.js';

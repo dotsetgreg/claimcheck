@@ -4,6 +4,7 @@
  */
 
 import { Command } from 'commander';
+import { registerBatchVerifyCommand } from './commands/batch-verify.js';
 import { registerCheckCommitCommand } from './commands/check-commit.js';
 import { registerDetectClaimsCommand } from './commands/detect-claims.js';
 import { registerVerifyCommand } from './commands/verify.js';
@@ -22,6 +23,7 @@ registerVerifyCommand(program);
 registerVerifyDiffCommand(program);
 registerCheckCommitCommand(program);
 registerDetectClaimsCommand(program);
+registerBatchVerifyCommand(program);
 registerWatchCommand(program);
 
 // Parse and run

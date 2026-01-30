@@ -1,0 +1,132 @@
+name: 'ClaimCheck'
+description: 'Verify AI claims about code changes in CI/CD'
+author: 'Dotset Labs'
+
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  cwd:
+    description: 'Working directory to analyze'
+    required: false
+    default: '.'
+  fail-on-incomplete:
+    description: 'Fail the workflow if incomplete claims are found'
+    required: false
+    default: 'true'
+  comment-on-pr:
+    description: 'Post results as PR comment'
+    required: false
+    default: 'true'
+  github-token:
+    description: 'GitHub token for PR comments'
+    required: false
+    default: ${{ github.token }}
+  code-only:
+    description: 'Only report matches in actual code'
+    required: false
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install ripgrep
+      shell: bash
+      run: |
+        if ! command -v rg &> /dev/null; then
+          echo "Installing ripgrep..."
+          if [[ "$RUNNER_OS" == "Linux" ]]; then
+            sudo apt-get update && sudo apt-get install -y ripgrep
+          elif [[ "$RUNNER_OS" == "macOS" ]]; then
+            brew install ripgrep
+          fi
+        fi
+
+    - name: Install ClaimCheck
+      shell: bash
+      run: npm install -g claimcheck
+
+    - name: Analyze Commit Messages
+      id: analyze
+      shell: bash
+      run: |
+        echo "::group::ClaimCheck Analysis"
+        
+        # Get commit messages from the PR or push
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          # For PRs, get commits in the PR
+          commits=$(git log --format="%s%n%b" ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} 2>/dev/null || echo "")
+        else
+          # For pushes, get the latest commit
+          commits=$(git log --format="%s%n%b" -1)
+        fi
+        
+        if [[ -z "$commits" ]]; then
+          echo "No commits to analyze"
+          echo "incomplete=false" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+        
+        # Detect claims in commit messages
+        echo "$commits" | claimcheck detect-claims --format json > claims.json || true
+        
+        claims_count=$(cat claims.json | jq 'length' 2>/dev/null || echo "0")
+        echo "Detected $claims_count claim(s) in commit messages"
+        
+        incomplete_count=0
+        
+        # Verify each claim
+        if [[ $claims_count -gt 0 ]]; then
+          echo "Verifying claims..."
+          cat claims.json | jq -c '.[]' | while read claim; do
+            claim_text=$(echo "$claim" | jq -r '.claim.raw')
+            echo ""
+            echo "Claim: $claim_text"
+            
+            # Verify the claim
+            result=$(claimcheck verify "$claim_text" --cwd "${{ inputs.cwd }}" --code-only=${{ inputs.code-only }} --format json 2>/dev/null || echo '{"verified": true}')
+            verified=$(echo "$result" | jq -r '.verified')
+            
+            if [[ "$verified" != "true" ]]; then
+              echo "  ✗ INCOMPLETE - Found remaining references"
+              incomplete_count=$((incomplete_count + 1))
+            else
+              echo "  ✓ VERIFIED"
+            fi
+          done
+        fi
+        
+        echo "::endgroup::"
+        
+        if [[ $incomplete_count -gt 0 ]]; then
+          echo "incomplete=true" >> $GITHUB_OUTPUT
+          echo "count=$incomplete_count" >> $GITHUB_OUTPUT
+        else
+          echo "incomplete=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Comment PR
+      if: ${{ inputs.comment-on-pr == 'true' && github.event_name == 'pull_request' && steps.analyze.outputs.incomplete == 'true' }}
+      uses: actions/github-script@v7
+      with:
+        github-token: ${{ inputs.github-token }}
+        script: |
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: `## ⚠️ ClaimCheck: Incomplete Refactor Detected\n\nThis PR contains commit messages claiming code changes that appear to be incomplete.\n\nPlease verify all references have been updated before merging.\n\nRun \`claimcheck verify-diff\` locally to see missed files.`
+          });
+
+    - name: Fail if Incomplete
+      if: ${{ inputs.fail-on-incomplete == 'true' && steps.analyze.outputs.incomplete == 'true' }}
+      shell: bash
+      run: |
+        echo "::error::Incomplete claims detected. Please verify all references are updated."
+        exit 1
