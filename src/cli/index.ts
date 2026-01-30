@@ -5,7 +5,9 @@
 
 import { Command } from 'commander';
 import { registerCheckCommitCommand } from './commands/check-commit.js';
+import { registerDetectClaimsCommand } from './commands/detect-claims.js';
 import { registerVerifyCommand } from './commands/verify.js';
+import { registerVerifyDiffCommand } from './commands/verify-diff.js';
 
 const program = new Command();
 
@@ -16,7 +18,9 @@ program
 
 // Register commands
 registerVerifyCommand(program);
+registerVerifyDiffCommand(program);
 registerCheckCommitCommand(program);
+registerDetectClaimsCommand(program);
 
 // Parse and run
 program.parse();

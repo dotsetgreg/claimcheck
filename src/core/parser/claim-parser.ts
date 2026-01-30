@@ -136,11 +136,21 @@ export function parseMultipleClaims(text: string): ParseResult[] {
   // Split by newlines and common delimiters
   const lines = text.split(/[\n\r]+/).filter((line) => line.trim());
 
-  // Also handle bullet points and numbered lists
+  // Also handle bullet points, numbered lists, and conjunctions
   const segments: string[] = [];
   for (const line of lines) {
     // Split on bullet points or numbers at start of segments
-    const parts = line.split(/(?:^|\s)[-*•]\s+|\d+\.\s+/);
+    let parts = line.split(/(?:^|\s)[-*•]\s+|\d+\.\s+/);
+
+    // Further split on conjunctions like "and also", "and", ", and"
+    const furtherSplit: string[] = [];
+    for (const part of parts) {
+      // Split on " and " followed by an action word
+      const subParts = part.split(/\s+and\s+(?=renamed?|removed?|updated?|replaced?|deleted?|added?|changed?|migrated?)/i);
+      furtherSplit.push(...subParts);
+    }
+    parts = furtherSplit;
+
     for (const part of parts) {
       const trimmed = part.trim();
       if (trimmed) {

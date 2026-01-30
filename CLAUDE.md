@@ -6,6 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **ClaimCheck** is a CLI tool that verifies AI claims about code changes against the actual codebase. When an AI assistant says "I renamed UserService to AuthService everywhere", ClaimCheck searches for remaining references to detect incomplete refactors.
 
+**Key Features:**
+- Context-aware search (distinguishes code vs comments/strings)
+- Git-aware verification (identifies files with references that weren't modified)
+- Smart claim parsing (extracts claims from natural language)
+
 ## Build Commands
 
 ```bash
@@ -28,8 +33,11 @@ pnpm run format           # Format with Prettier
 # Or via pnpm
 pnpm exec claimcheck verify "claim text"
 
-# Check a commit message
-pnpm exec claimcheck check-commit HEAD
+# All commands
+pnpm exec claimcheck verify "claim"           # Basic verification
+pnpm exec claimcheck verify-diff "claim"      # Git-aware verification
+pnpm exec claimcheck detect-claims "text"     # Extract claims from text
+pnpm exec claimcheck check-commit HEAD        # Verify commit message claims
 ```
 
 ## Architecture
@@ -39,10 +47,13 @@ src/
 ├── cli/
 │   ├── index.ts              # CLI entry point (Commander)
 │   ├── commands/
-│   │   ├── verify.ts         # Main verify command
+│   │   ├── verify.ts         # Basic verification command
+│   │   ├── verify-diff.ts    # Git-aware verification command
+│   │   ├── detect-claims.ts  # Claim extraction command
 │   │   └── check-commit.ts   # Verify from commit message
 │   └── ui/
-│       ├── reporter.ts       # Output formatting (pretty, json, summary)
+│       ├── reporter.ts       # Verification output formatting
+│       ├── diff-reporter.ts  # Diff verification output formatting
 │       └── spinner.ts        # Progress indicators (ora)
 ├── core/
 │   ├── parser/
@@ -52,8 +63,12 @@ src/
 │   ├── verifier/
 │   │   ├── search-engine.ts  # ripgrep wrapper
 │   │   └── file-filter.ts    # File type filtering
-│   └── analyzer/
-│       └── result-analyzer.ts # Analyze search results
+│   ├── analyzer/
+│   │   ├── result-analyzer.ts # Basic verification analysis
+│   │   ├── diff-analyzer.ts   # Git-aware verification
+│   │   └── context-detector.ts # Code vs comment detection
+│   └── git/
+│       └── git-utils.ts      # Git diff utilities
 ├── types/
 │   └── index.ts              # TypeScript interfaces
 ├── utils/
@@ -70,12 +85,27 @@ src/
 - `update`: X was replaced with Y (search for remaining X)
 - `add`: Y was added (verify Y exists - future)
 
+### Context Detection
+Each match is analyzed to determine if it's in:
+- `code`: Actual code (high priority)
+- `import`: Import/require statements (high priority)
+- `string`: String literals (medium priority in tests)
+- `comment`: Comments and documentation (low priority)
+
+Use `--code-only` to filter to high-priority matches only.
+
 ### Variant Detection
 When searching for a term, ClaimCheck generates naming convention variants:
 - `UserService` → `UserService`, `userService`, `user_service`, `USER_SERVICE`, `user-service`
 
+### Git-Aware Verification
+The `verify-diff` command compares claims against actual git changes:
+- Gets list of modified files from git
+- Searches for references in all files
+- Identifies "missed files" - files with references that weren't modified
+
 ### Search Engine
-Uses ripgrep (rg) for fast, .gitignore-respecting searches. Returns structured references with file, line, column, and context.
+Uses ripgrep (rg) for fast, .gitignore-respecting searches. Returns structured references with file, line, column, context, and match type.
 
 ## External Dependencies
 
@@ -93,6 +123,6 @@ Uses ripgrep (rg) for fast, .gitignore-respecting searches. Returns structured r
 
 ## Exit Codes
 
-- `0`: Claim verified (no remaining references)
-- `1`: Discrepancies found (references remain)
+- `0`: Claim verified (no remaining references) / claims detected
+- `1`: Discrepancies found (references remain) / no claims found
 - `2`: Runtime error

@@ -1,4 +1,5 @@
 export { formatResult } from './reporter.js';
+export { formatDiffResult } from './diff-reporter.js';
 export {
   startSpinner,
   updateSpinner,

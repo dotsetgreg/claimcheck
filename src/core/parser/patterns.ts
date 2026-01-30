@@ -72,6 +72,13 @@ export const CLAIM_PATTERNS: ClaimPattern[] = [
   {
     action: 'update',
     pattern:
+      /(?:updated?|replaced?|migrated?|converted?)\s+["'`]?(\w+(?:[-/]\w+)*)["'`]?\s+(?:imports?)\s+(?:to|with|→|->|=>)\s+["'`]?(\w+(?:[-/]\w+)*)["'`]?/i,
+    oldValueGroup: 0,
+    newValueGroup: 1,
+  },
+  {
+    action: 'update',
+    pattern:
       /(?:switched?|moved?)\s+(?:from\s+)?["'`]?(\w+(?:[-/]\w+)*)["'`]?\s+(?:to|→|->|=>)\s+["'`]?(\w+(?:[-/]\w+)*)["'`]?/i,
     oldValueGroup: 0,
     newValueGroup: 1,

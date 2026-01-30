@@ -18,6 +18,12 @@ export interface ParsedClaim {
   raw: string; // Original claim text
 }
 
+// Match context type
+export type MatchContext = 'code' | 'comment' | 'string' | 'import' | 'unknown';
+
+// Match priority for filtering
+export type MatchPriority = 'high' | 'medium' | 'low';
+
 // A single reference found in the codebase
 export interface Reference {
   file: string; // Relative file path
@@ -26,6 +32,8 @@ export interface Reference {
   content: string; // The matched line content
   context: string[]; // Surrounding lines for context
   variant: string; // Which variant of the search term matched
+  matchContext?: MatchContext; // Where the match is (code, comment, string, import)
+  priority?: MatchPriority; // How important this match is
 }
 
 // Result for a specific variant search
@@ -74,6 +82,7 @@ export interface VerifyOptions {
   caseSensitive: boolean;
   contextLines: number;
   cwd?: string;
+  codeOnly?: boolean; // Only show matches in actual code (not comments/strings/docs)
 }
 
 // Exit codes for CLI

@@ -4,6 +4,7 @@
  */
 
 import type {
+  MatchPriority,
   ParsedClaim,
   Reference,
   SearchOptions,
@@ -11,12 +12,15 @@ import type {
   VerificationResult,
   VerificationSummary,
 } from '../../types/index.js';
+import { detectContext } from './context-detector.js';
 import { generateVariants } from '../parser/variant-generator.js';
 import { search } from '../verifier/search-engine.js';
 
 export interface AnalyzeOptions extends SearchOptions {
   cwd: string;
   checkVariants?: boolean;
+  detectContexts?: boolean; // Whether to detect code/comment/string contexts
+  minPriority?: MatchPriority; // Filter results by minimum priority
 }
 
 /**
@@ -27,7 +31,13 @@ export async function verifyClaim(
   options: AnalyzeOptions
 ): Promise<VerificationResult> {
   const startTime = Date.now();
-  const { cwd, checkVariants = true, ...searchOptions } = options;
+  const {
+    cwd,
+    checkVariants = true,
+    detectContexts = true,
+    minPriority,
+    ...searchOptions
+  } = options;
 
   // For rename/remove/update, search for the old value (should be gone)
   const searchTerm = claim.oldValue;
@@ -44,11 +54,18 @@ export async function verifyClaim(
     const result = await search(variant, cwd, searchOptions);
 
     if (result.success && result.references.length > 0) {
-      // Update variant in references
-      const refs = result.references.map((ref) => ({
-        ...ref,
-        variant,
-      }));
+      // Update variant in references and detect context
+      const refs = result.references.map((ref) => {
+        const enhanced: Reference = { ...ref, variant };
+
+        if (detectContexts) {
+          const contextInfo = detectContext(ref.content, ref.column - 1, variant, ref.file);
+          enhanced.matchContext = contextInfo.context;
+          enhanced.priority = contextInfo.priority;
+        }
+
+        return enhanced;
+      });
 
       variantResults.push({
         variant,
@@ -69,7 +86,12 @@ export async function verifyClaim(
   }
 
   // Deduplicate references (same file:line might match multiple variants)
-  const deduped = deduplicateReferences(allReferences);
+  let deduped = deduplicateReferences(allReferences);
+
+  // Filter by priority if specified
+  if (minPriority) {
+    deduped = filterByMinPriority(deduped, minPriority);
+  }
 
   const summary: VerificationSummary = {
     totalFilesSearched: filesWithMatches.size,
@@ -104,4 +126,22 @@ function deduplicateReferences(references: Reference[]): Reference[] {
   }
 
   return Array.from(seen.values());
+}
+
+/**
+ * Filter references by minimum priority level
+ */
+function filterByMinPriority(references: Reference[], minPriority: MatchPriority): Reference[] {
+  const priorityOrder: Record<MatchPriority, number> = {
+    high: 3,
+    medium: 2,
+    low: 1,
+  };
+
+  const minLevel = priorityOrder[minPriority];
+
+  return references.filter((ref) => {
+    const level = priorityOrder[ref.priority || 'high'];
+    return level >= minLevel;
+  });
 }

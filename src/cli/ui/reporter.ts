@@ -82,6 +82,17 @@ function formatPretty(result: VerificationResult): string {
   lines.push(chalk.bold('Summary'));
   lines.push(`   Files with matches: ${result.summary.filesWithMatches}`);
   lines.push(`   Total matches: ${result.summary.totalMatches}`);
+
+  // Context breakdown
+  const contextCounts = countByContext(result.remainingReferences);
+  if (contextCounts.code > 0 || contextCounts.import > 0) {
+    const codeTotal = contextCounts.code + contextCounts.import;
+    lines.push(
+      `   In code/imports: ${chalk.red(String(codeTotal))} ` +
+        chalk.dim(`(comments: ${contextCounts.comment}, strings: ${contextCounts.string})`)
+    );
+  }
+
   lines.push(`   Duration: ${result.duration}ms`);
 
   // Tip for incomplete
@@ -121,8 +132,32 @@ function formatClaimHeader(result: VerificationResult): string {
 function formatReference(ref: Reference): string {
   const lineNum = chalk.dim(`:${ref.line}`);
   const content = highlightMatch(ref.content, ref.variant);
+  const contextBadge = formatContextBadge(ref.matchContext, ref.priority);
 
-  return `   │ ${lineNum.padEnd(10)} ${content}`;
+  return `   │ ${lineNum.padEnd(10)} ${contextBadge}${content}`;
+}
+
+/**
+ * Format a context badge for the match type
+ */
+function formatContextBadge(
+  context: Reference['matchContext'],
+  priority: Reference['priority']
+): string {
+  if (!context) return '';
+
+  switch (context) {
+    case 'code':
+      return chalk.red('[code] ');
+    case 'import':
+      return chalk.red('[import] ');
+    case 'comment':
+      return chalk.dim('[comment] ');
+    case 'string':
+      return priority === 'medium' ? chalk.yellow('[string] ') : chalk.dim('[string] ');
+    default:
+      return '';
+  }
 }
 
 /**
@@ -154,4 +189,24 @@ function groupByFile(refs: Reference[]): Map<string, Reference[]> {
   }
 
   return grouped;
+}
+
+/**
+ * Count references by context type
+ */
+function countByContext(refs: Reference[]): Record<string, number> {
+  const counts: Record<string, number> = {
+    code: 0,
+    import: 0,
+    comment: 0,
+    string: 0,
+    unknown: 0,
+  };
+
+  for (const ref of refs) {
+    const ctx = ref.matchContext || 'unknown';
+    counts[ctx] = (counts[ctx] || 0) + 1;
+  }
+
+  return counts;
 }
