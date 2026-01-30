@@ -234,6 +234,63 @@ ClaimCheck automatically searches for naming convention variants:
 | `1` | Discrepancies found / no claims detected |
 | `2` | Runtime error |
 
+## MCP Server (for AI Assistants)
+
+ClaimCheck includes an MCP (Model Context Protocol) server that allows AI assistants like Claude to verify their own claims about code changes.
+
+### Setup
+
+Add to your Claude Code MCP settings (`~/.claude/mcp_settings.json`):
+
+```json
+{
+  "mcpServers": {
+    "claimcheck": {
+      "command": "npx",
+      "args": ["claimcheck-mcp"],
+      "env": {}
+    }
+  }
+}
+```
+
+Or if installed globally:
+
+```json
+{
+  "mcpServers": {
+    "claimcheck": {
+      "command": "claimcheck-mcp"
+    }
+  }
+}
+```
+
+### Available Tools
+
+The MCP server provides three tools:
+
+| Tool | Description |
+|------|-------------|
+| `claimcheck_verify` | Verify a claim by searching for remaining references |
+| `claimcheck_verify_diff` | Verify against git changes (smarter - finds missed files) |
+| `claimcheck_detect` | Detect verifiable claims in text |
+
+### For AI Assistants
+
+Add this to your project's `CLAUDE.md` to instruct the AI to verify its claims:
+
+```markdown
+## Claim Verification
+
+After completing refactors (renames, removals, updates), use the claimcheck MCP tools
+to verify your changes:
+
+1. Use `claimcheck_verify_diff` after making changes to check for missed files
+2. Use `claimcheck_verify` with `code_only: true` to find remaining code references
+3. If verification fails, fix the missed references before reporting completion
+```
+
 ## Programmatic API
 
 ```typescript
@@ -244,6 +301,7 @@ import {
   verifyClaimAgainstDiff,
   generateVariants,
   detectContext,
+  startClaimCheckServer, // MCP server
 } from 'claimcheck';
 
 // Parse a single claim
@@ -269,6 +327,9 @@ console.log(diffResult.missedFiles); // Files with refs that weren't modified
 // Generate naming variants
 const variants = generateVariants('UserService');
 console.log(variants.all); // ['UserService', 'userService', 'user_service', ...]
+
+// Start MCP server programmatically
+const server = await startClaimCheckServer({ cwd: '/path/to/project' });
 ```
 
 ## License

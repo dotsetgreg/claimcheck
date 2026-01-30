@@ -20,4 +20,14 @@ export default defineConfig([
       js: '#!/usr/bin/env node',
     },
   },
+  // MCP server binary
+  {
+    entry: { 'mcp/server': 'src/mcp/server.ts' },
+    format: ['esm'],
+    sourcemap: true,
+    target: 'node20',
+    banner: {
+      js: '#!/usr/bin/env node',
+    },
+  },
 ]);

@@ -71,3 +71,10 @@ export { runCheckCommit } from './cli/commands/check-commit.js';
 export { runDetectClaims } from './cli/commands/detect-claims.js';
 export { formatResult } from './cli/ui/reporter.js';
 export { formatDiffResult } from './cli/ui/diff-reporter.js';
+
+// MCP server
+export {
+  ClaimCheckServer,
+  startClaimCheckServer,
+  type ClaimCheckServerConfig,
+} from './mcp/index.js';

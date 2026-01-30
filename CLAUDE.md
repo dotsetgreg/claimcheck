@@ -4,12 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**ClaimCheck** is a CLI tool that verifies AI claims about code changes against the actual codebase. When an AI assistant says "I renamed UserService to AuthService everywhere", ClaimCheck searches for remaining references to detect incomplete refactors.
+**ClaimCheck** is a CLI tool and MCP server that verifies AI claims about code changes against the actual codebase. When an AI assistant says "I renamed UserService to AuthService everywhere", ClaimCheck searches for remaining references to detect incomplete refactors.
 
 **Key Features:**
 - Context-aware search (distinguishes code vs comments/strings)
 - Git-aware verification (identifies files with references that weren't modified)
 - Smart claim parsing (extracts claims from natural language)
+- MCP server for AI assistant integration
 
 ## Build Commands
 
@@ -38,6 +39,72 @@ pnpm exec claimcheck verify "claim"           # Basic verification
 pnpm exec claimcheck verify-diff "claim"      # Git-aware verification
 pnpm exec claimcheck detect-claims "text"     # Extract claims from text
 pnpm exec claimcheck check-commit HEAD        # Verify commit message claims
+
+# MCP server
+pnpm exec claimcheck-mcp                      # Start MCP server
+```
+
+## MCP Server
+
+The MCP server (`src/mcp/server.ts`) provides tools for AI assistants to verify their own claims.
+
+### Tools
+
+| Tool | Description |
+|------|-------------|
+| `claimcheck_verify` | Search for remaining references to verify a claim |
+| `claimcheck_verify_diff` | Compare against git changes to find missed files |
+| `claimcheck_detect` | Parse text for verifiable claims |
+
+### Usage
+
+Add to Claude Code MCP settings:
+```json
+{
+  "mcpServers": {
+    "claimcheck": {
+      "command": "npx",
+      "args": ["claimcheck-mcp"]
+    }
+  }
+}
+```
+
+## Self-Verification Guidelines (for AI Assistants)
+
+**IMPORTANT**: After completing refactors, renames, or removals, verify your claims using the claimcheck tools:
+
+### When to Verify
+
+1. After renaming a function, class, or variable across multiple files
+2. After removing code patterns (console.log, debugger, etc.)
+3. After updating imports or dependencies
+4. After any claim that includes words like "all", "everywhere", "throughout"
+
+### How to Verify
+
+1. **Use `claimcheck_verify_diff`** (preferred for git repos):
+   - Call after making changes
+   - It shows which files contain references but weren't modified
+   - Fix any missed files before reporting completion
+
+2. **Use `claimcheck_verify`** with `code_only: true`:
+   - Use when you want to ignore comments/docs
+   - Good for checking code-only references
+
+3. **If verification fails**:
+   - Do NOT report the task as complete
+   - Fix the remaining references
+   - Verify again until it passes
+
+### Example Workflow
+
+```
+1. Make changes: Rename UserService to AuthService in relevant files
+2. Verify: Call claimcheck_verify_diff with claim "renamed UserService to AuthService"
+3. If missed files found: Update those files
+4. Verify again: Confirm no remaining references
+5. Report completion: Only after verification passes
 ```
 
 ## Architecture
@@ -55,6 +122,8 @@ src/
 │       ├── reporter.ts       # Verification output formatting
 │       ├── diff-reporter.ts  # Diff verification output formatting
 │       └── spinner.ts        # Progress indicators (ora)
+├── mcp/
+│   └── server.ts             # MCP server implementation
 ├── core/
 │   ├── parser/
 │   │   ├── claim-parser.ts   # NLP claim extraction
@@ -92,7 +161,7 @@ Each match is analyzed to determine if it's in:
 - `string`: String literals (medium priority in tests)
 - `comment`: Comments and documentation (low priority)
 
-Use `--code-only` to filter to high-priority matches only.
+Use `--code-only` or `code_only: true` to filter to high-priority matches only.
 
 ### Variant Detection
 When searching for a term, ClaimCheck generates naming convention variants:
@@ -104,12 +173,10 @@ The `verify-diff` command compares claims against actual git changes:
 - Searches for references in all files
 - Identifies "missed files" - files with references that weren't modified
 
-### Search Engine
-Uses ripgrep (rg) for fast, .gitignore-respecting searches. Returns structured references with file, line, column, context, and match type.
-
 ## External Dependencies
 
 - **ripgrep (rg)**: Must be installed on the system. Provides fast codebase searching.
+- **@modelcontextprotocol/sdk**: MCP server implementation
 
 ## Tech Stack
 
@@ -118,6 +185,7 @@ Uses ripgrep (rg) for fast, .gitignore-respecting searches. Returns structured r
 - Commander for CLI
 - Chalk for colors
 - Ora for spinners
+- Zod for schema validation
 - Vitest for testing
 - tsup for building
 
