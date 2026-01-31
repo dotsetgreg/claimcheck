@@ -3,11 +3,11 @@
  * Verify claims from a git commit message
  */
 
-import { spawn } from 'node:child_process';
 import type { Command } from 'commander';
 import { verifyClaim } from '../../core/analyzer/result-analyzer.js';
 import { parseMultipleClaims } from '../../core/parser/claim-parser.js';
 import { checkRipgrep } from '../../core/verifier/search-engine.js';
+import { getCommitMessage } from '../../core/git/git-utils.js';
 import type { OutputFormat, VerificationResult, VerifyOptions } from '../../types/index.js';
 import { EXIT_CODES } from '../../types/index.js';
 import { formatResult } from '../ui/reporter.js';
@@ -39,36 +39,6 @@ export function registerCheckCommitCommand(program: Command): void {
 
       process.exit(exitCode);
     });
-}
-
-/**
- * Get commit message from git
- */
-async function getCommitMessage(commit: string, cwd: string): Promise<string | null> {
-  return new Promise((resolve) => {
-    const proc = spawn('git', ['log', '-1', '--format=%B', commit], { cwd });
-
-    let stdout = '';
-
-    proc.stdout.on('data', (data: Buffer) => {
-      stdout += data.toString();
-    });
-
-    // Ignore stderr
-    proc.stderr.on('data', () => {});
-
-    proc.on('error', () => {
-      resolve(null);
-    });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve(stdout.trim());
-      } else {
-        resolve(null);
-      }
-    });
-  });
 }
 
 /**

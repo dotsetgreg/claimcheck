@@ -123,6 +123,30 @@ describe('detectContext', () => {
       expect(result.context).toBe('string');
       expect(result.priority).toBe('medium');
     });
+
+    it('handles escaped quotes correctly', () => {
+      // The escaped quote should not start a string
+      const result = detectContext(
+        'const x = "foo\\"bar"; UserService.get();',
+        23,
+        'UserService',
+        'src/app.ts'
+      );
+      expect(result.context).toBe('code');
+      expect(result.priority).toBe('high');
+    });
+
+    it('handles escaped backslashes before quotes', () => {
+      // The \\ escapes itself, so the quote after it ends the string
+      const result = detectContext(
+        'const x = "foo\\\\"; UserService.get();',
+        20,
+        'UserService',
+        'src/app.ts'
+      );
+      expect(result.context).toBe('code');
+      expect(result.priority).toBe('high');
+    });
   });
 
   describe('test file detection', () => {

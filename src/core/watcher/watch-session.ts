@@ -55,12 +55,19 @@ export interface WatchSessionEvents {
 /**
  * Watch session that monitors logs, detects claims, and verifies them
  */
+/**
+ * Maximum number of processed claims to track before cleanup
+ * Prevents unbounded memory growth in long-running sessions
+ */
+const MAX_PROCESSED_CLAIMS = 10000;
+
 export class WatchSession extends EventEmitter {
   private config: Required<WatchSessionConfig>;
   private watcher: FileWatcher;
   private verificationQueue: DetectedClaim[] = [];
   private isVerifying: boolean = false;
   private processedClaims: Set<string> = new Set();
+  private claimsVerifiedCount: number = 0;
 
   constructor(config: WatchSessionConfig) {
     super();
@@ -102,7 +109,7 @@ export class WatchSession extends EventEmitter {
   getStats(): { claimsDetected: number; claimsVerified: number; claimsPending: number } {
     return {
       claimsDetected: this.processedClaims.size,
-      claimsVerified: this.processedClaims.size - this.verificationQueue.length,
+      claimsVerified: this.claimsVerifiedCount,
       claimsPending: this.verificationQueue.length,
     };
   }
@@ -153,6 +160,13 @@ export class WatchSession extends EventEmitter {
         this.verificationQueue.push(detected);
         this.processQueue();
       }
+    }
+
+    // Cleanup old processed claims to prevent memory leak
+    if (this.processedClaims.size > MAX_PROCESSED_CLAIMS) {
+      // Keep only the most recent half
+      const claimsArray = Array.from(this.processedClaims);
+      this.processedClaims = new Set(claimsArray.slice(claimsArray.length / 2));
     }
   }
 
@@ -212,6 +226,7 @@ export class WatchSession extends EventEmitter {
           detected.verified = result.verified;
         }
 
+        this.claimsVerifiedCount++;
         this.emit('verified', detected);
       } catch (error) {
         this.emit('error', error instanceof Error ? error : new Error(String(error)));

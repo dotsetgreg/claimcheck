@@ -5,6 +5,19 @@
 
 import { spawn } from 'node:child_process';
 
+/**
+ * Validate a git ref (commit hash, branch name, HEAD, etc.)
+ * Prevents potential injection of malicious arguments
+ */
+function isValidGitRef(ref: string): boolean {
+  if (!ref || ref.length === 0 || ref.length > 256) {
+    return false;
+  }
+  // Allow: alphanumeric, /, _, -, ., ^, ~, @, :
+  // This covers: SHA hashes, branch names, HEAD, HEAD~1, HEAD^, origin/main, etc.
+  return /^[a-zA-Z0-9/_.\-^~@:]+$/.test(ref);
+}
+
 export interface GitDiffFile {
   path: string;
   status: 'added' | 'modified' | 'deleted' | 'renamed';
@@ -74,6 +87,10 @@ export async function getStagedFiles(cwd: string): Promise<GitDiffResult> {
  * Get list of files changed in a commit
  */
 export async function getCommitFiles(commit: string, cwd: string): Promise<GitDiffResult> {
+  if (!isValidGitRef(commit)) {
+    return { success: false, files: [], error: `Invalid git ref: ${commit}` };
+  }
+
   const result = await execGit(['diff-tree', '--no-commit-id', '--name-status', '-r', commit], cwd);
 
   if (result.error) {
@@ -91,6 +108,13 @@ export async function getDiffFiles(
   toRef: string,
   cwd: string
 ): Promise<GitDiffResult> {
+  if (!isValidGitRef(fromRef)) {
+    return { success: false, files: [], error: `Invalid git ref: ${fromRef}` };
+  }
+  if (!isValidGitRef(toRef)) {
+    return { success: false, files: [], error: `Invalid git ref: ${toRef}` };
+  }
+
   const result = await execGit(['diff', '--name-status', fromRef, toRef], cwd);
 
   if (result.error) {
@@ -179,6 +203,9 @@ function parseNameStatus(output: string): GitDiffFile[] {
  * Get the commit message for a commit
  */
 export async function getCommitMessage(commit: string, cwd: string): Promise<string | null> {
+  if (!isValidGitRef(commit)) {
+    return null;
+  }
   const result = await execGit(['log', '-1', '--format=%B', commit], cwd);
   return result.error ? null : result.stdout.trim();
 }

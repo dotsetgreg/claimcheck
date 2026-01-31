@@ -135,16 +135,26 @@ function isImportLine(line: string): boolean {
  * Check if match position is inside a string literal
  */
 function isInsideString(beforeMatch: string): boolean {
-  // Count unescaped quotes before the match
+  // Track quote states with proper escape handling
   let inDouble = false;
   let inSingle = false;
   let inTemplate = false;
+  let escaped = false;
 
   for (let i = 0; i < beforeMatch.length; i++) {
     const char = beforeMatch[i];
-    const prevChar = i > 0 ? beforeMatch[i - 1] : '';
 
-    if (prevChar === '\\') continue; // Skip escaped chars
+    // If previous char was backslash and we're in a string, this char is escaped
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    // Check for escape character (only matters inside strings)
+    if (char === '\\' && (inDouble || inSingle || inTemplate)) {
+      escaped = true;
+      continue;
+    }
 
     if (char === '"' && !inSingle && !inTemplate) {
       inDouble = !inDouble;

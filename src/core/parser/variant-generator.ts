@@ -84,6 +84,7 @@ function extractWords(term: string): string[] {
 }
 
 function toPascalCase(words: string[]): string {
+  if (words.length === 0) return '';
   return words.map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
 }
 
@@ -94,13 +95,16 @@ function toCamelCase(words: string[]): string {
 }
 
 function toSnakeCase(words: string[]): string {
+  if (words.length === 0) return '';
   return words.map((w) => w.toLowerCase()).join('_');
 }
 
 function toScreamingSnakeCase(words: string[]): string {
+  if (words.length === 0) return '';
   return words.map((w) => w.toUpperCase()).join('_');
 }
 
 function toKebabCase(words: string[]): string {
+  if (words.length === 0) return '';
   return words.map((w) => w.toLowerCase()).join('-');
 }

@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name('claimcheck')
   .description('Verify AI claims about code changes against actual codebase')
-  .version('0.1.0');
+  .version('0.2.0');
 
 // Register commands
 registerVerifyCommand(program);

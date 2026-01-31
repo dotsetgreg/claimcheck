@@ -97,24 +97,50 @@ export async function runDetectClaims(
 async function readStdin(): Promise<string> {
   return new Promise((resolve) => {
     let data = '';
+    let resolved = false;
 
-    process.stdin.setEncoding('utf8');
+    const cleanup = () => {
+      process.stdin.removeListener('readable', onReadable);
+      process.stdin.removeListener('end', onEnd);
+      process.stdin.removeListener('error', onError);
+    };
 
-    process.stdin.on('readable', () => {
+    const doResolve = (value: string) => {
+      if (!resolved) {
+        resolved = true;
+        cleanup();
+        resolve(value);
+      }
+    };
+
+    const onReadable = () => {
       let chunk;
       while ((chunk = process.stdin.read()) !== null) {
         data += chunk;
       }
-    });
+    };
 
-    process.stdin.on('end', () => {
-      resolve(data);
-    });
+    const onEnd = () => {
+      doResolve(data);
+    };
 
-    // Set a timeout in case stdin never ends
+    const onError = () => {
+      doResolve(data);
+    };
+
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('readable', onReadable);
+    process.stdin.on('end', onEnd);
+    process.stdin.on('error', onError);
+
+    // Resume stdin in case it's paused
+    process.stdin.resume();
+
+    // Set a timeout in case stdin never ends (e.g., empty pipe)
+    // This is a fallback for edge cases
     setTimeout(() => {
-      if (!data) {
-        resolve('');
+      if (!resolved && !data) {
+        doResolve('');
       }
     }, 100);
   });
